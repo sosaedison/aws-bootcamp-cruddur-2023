@@ -8,6 +8,7 @@ from services.create_reply import *
 from services.home_activities import *
 from services.message_groups import *
 from services.messages import *
+from services.notification_activities import *
 from services.search_activities import *
 from services.show_activity import *
 from services.user_activities import *
@@ -16,7 +17,6 @@ app = Flask(__name__)
 frontend = os.getenv('FRONTEND_URL')
 backend = os.getenv('BACKEND_URL')
 origins = [frontend, backend]
-print('origins', origins)
 cors = CORS(
   app, 
   resources={r"/api/*": {"origins": origins}},
@@ -107,6 +107,16 @@ def data_activities_reply(activity_uuid):
   user_handle  = 'andrewbrown'
   message = request.json['message']
   model = CreateReply.run(message, user_handle, activity_uuid)
+  if model['errors'] is not None:
+    return model['errors'], 422
+  else:
+    return model['data'], 200
+  return
+
+@app.route("/api/activities/notifications", methods=['GET'])
+def data_notifications():
+  user_handle  = 'andrewbrown'
+  model = NotificationActivities.run(user_handle=user_handle)
   if model['errors'] is not None:
     return model['errors'], 422
   else:
