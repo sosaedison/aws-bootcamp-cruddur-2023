@@ -2,6 +2,14 @@ import os
 
 from flask import Flask, request
 from flask_cors import CORS, cross_origin
+
+# HONEYCOMB INSTRUMENTATION
+from opentelemetry import trace
+from opentelemetry.exporter.otlp.proto.http.trace_exporter import OTLPSpanExporter
+from opentelemetry.instrumentation.flask import FlaskInstrumentor
+from opentelemetry.instrumentation.requests import RequestsInstrumentor
+from opentelemetry.sdk.trace import TracerProvider
+from opentelemetry.sdk.trace.export import BatchSpanProcessor
 from services.create_activity import *
 from services.create_message import *
 from services.create_reply import *
@@ -13,7 +21,19 @@ from services.search_activities import *
 from services.show_activity import *
 from services.user_activities import *
 
+# HONEYCOMB INSTRUMENTATION
+provider = TracerProvider()
+processor = BatchSpanProcessor(OTLPSpanExporter())
+provider.add_span_processor(processor)
+trace.set_tracer_provider(provider)
+tracer = trace.get_tracer(__name__)
+
 app = Flask(__name__)
+
+# HONEYCOMB INSTRUMENTATION
+FlaskInstrumentor().instrument_app(app)
+RequestsInstrumentor().instrument()
+
 frontend = os.getenv("FRONTEND_URL")
 backend = os.getenv("BACKEND_URL")
 origins = [frontend, backend]
