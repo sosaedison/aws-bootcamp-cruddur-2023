@@ -2,13 +2,16 @@ import logging
 import os
 from time import strftime
 
+import rollbar
+import rollbar.contrib.flask
 import watchtower
 from aws_xray_sdk.core import xray_recorder
 from aws_xray_sdk.ext.flask.middleware import XRayMiddleware
-from flask import Flask, request
+from flask import Flask, got_request_exception, request
 from flask_cors import CORS, cross_origin
 from opentelemetry import trace
-from opentelemetry.exporter.otlp.proto.http.trace_exporter import OTLPSpanExporter
+from opentelemetry.exporter.otlp.proto.http.trace_exporter import \
+    OTLPSpanExporter
 from opentelemetry.instrumentation.flask import FlaskInstrumentor
 from opentelemetry.instrumentation.requests import RequestsInstrumentor
 from opentelemetry.sdk.trace import TracerProvider
@@ -64,7 +67,7 @@ cors = CORS(
     methods="OPTIONS,GET,HEAD,POST",
 )
 
-
+# CLOUDWATCH LOGS TEST
 # @app.after_request
 # def after_request(response):
 #     timestamp = strftime("[%Y-%b-%d %H:%M]")
@@ -78,6 +81,31 @@ cors = CORS(
 #         response.status,
 #     )
 #     return response
+
+
+# ROLLBAR INSTRUMENTATION
+# @app.before_first_request
+# def init_rollbar():
+#     """init rollbar module"""
+#     rollbar.init(
+#         # access token
+#         access_token=os.getenv("ROLLBAR_ACCESS_TOKEN"),
+#         # environment name
+#         environment="production",
+#         # server root directory, makes tracebacks prettier
+#         root=os.path.dirname(os.path.realpath(__file__)),
+#         # flask already sets up logging
+#         allow_logging_basic_config=False,
+#     )
+
+#     # send exceptions from `app` to rollbar, using flask's signal system.
+#     got_request_exception.connect(rollbar.contrib.flask.report_exception, app)
+
+
+# @app.route("/rollbar/test")
+# def rollbar_test():
+#     rollbar.report_message("Hello World!", "warning")
+#     return "Hello World!"
 
 
 @app.route("/api/message_groups", methods=["GET"])
