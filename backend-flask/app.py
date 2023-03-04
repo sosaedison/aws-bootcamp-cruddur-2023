@@ -33,8 +33,8 @@ from services.user_activities import *
 # logger.addHandler(cw_handler)
 # logger.info("some message")
 
-xray_url = os.getenv("AWS_XRAY_URL")
-xray_recorder.configure(service="backend-flask", dynamic_naming=xray_url)
+# xray_url = os.getenv("AWS_XRAY_URL")
+# xray_recorder.configure(service="backend-flask", dynamic_naming=xray_url)
 
 
 # HONEYCOMB INSTRUMENTATION
@@ -47,7 +47,7 @@ tracer = trace.get_tracer(__name__)
 app = Flask(__name__)
 
 # XRAY INSTRUMENTATION
-XRayMiddleware(app, xray_recorder)
+# XRayMiddleware(app, xray_recorder)
 
 # HONEYCOMB INSTRUMENTATION
 FlaskInstrumentor().instrument_app(app)
@@ -65,19 +65,19 @@ cors = CORS(
 )
 
 
-@app.after_request
-def after_request(response):
-    timestamp = strftime("[%Y-%b-%d %H:%M]")
-    logger.error(
-        "%s %s %s %s %s %s",
-        timestamp,
-        request.remote_addr,
-        request.method,
-        request.scheme,
-        request.full_path,
-        response.status,
-    )
-    return response
+# @app.after_request
+# def after_request(response):
+#     timestamp = strftime("[%Y-%b-%d %H:%M]")
+#     logger.error(
+#         "%s %s %s %s %s %s",
+#         timestamp,
+#         request.remote_addr,
+#         request.method,
+#         request.scheme,
+#         request.full_path,
+#         response.status,
+#     )
+#     return response
 
 
 @app.route("/api/message_groups", methods=["GET"])
