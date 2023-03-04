@@ -1,5 +1,8 @@
+import logging
 import os
+from time import strftime
 
+import watchtower
 from aws_xray_sdk.core import xray_recorder
 from aws_xray_sdk.ext.flask.middleware import XRayMiddleware
 from flask import Flask, request
@@ -20,6 +23,15 @@ from services.notification_activities import *
 from services.search_activities import *
 from services.show_activity import *
 from services.user_activities import *
+
+# Configuring Logger to Use CloudWatch
+# logger = logging.getLogger(__name__)
+# logger.setLevel(logging.DEBUG)
+# console_handler = logging.StreamHandler()
+# cw_handler = watchtower.CloudWatchLogHandler(log_group="cruddur")
+# logger.addHandler(console_handler)
+# logger.addHandler(cw_handler)
+# logger.info("some message")
 
 xray_url = os.getenv("AWS_XRAY_URL")
 xray_recorder.configure(service="backend-flask", dynamic_naming=xray_url)
@@ -51,6 +63,21 @@ cors = CORS(
     allow_headers="content-type,if-modified-since",
     methods="OPTIONS,GET,HEAD,POST",
 )
+
+
+@app.after_request
+def after_request(response):
+    timestamp = strftime("[%Y-%b-%d %H:%M]")
+    logger.error(
+        "%s %s %s %s %s %s",
+        timestamp,
+        request.remote_addr,
+        request.method,
+        request.scheme,
+        request.full_path,
+        response.status,
+    )
+    return response
 
 
 @app.route("/api/message_groups", methods=["GET"])
