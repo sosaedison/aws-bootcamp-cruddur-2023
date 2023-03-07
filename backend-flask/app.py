@@ -9,9 +9,13 @@ from aws_xray_sdk.core import xray_recorder
 from aws_xray_sdk.ext.flask.middleware import XRayMiddleware
 from flask import Flask, got_request_exception, request
 from flask_cors import CORS, cross_origin
+from lib.cognito_token_verification import (
+    CognitoJwtToken,
+    TokenVerifyError,
+    extract_access_token,
+)
 from opentelemetry import trace
-from opentelemetry.exporter.otlp.proto.http.trace_exporter import \
-    OTLPSpanExporter
+from opentelemetry.exporter.otlp.proto.http.trace_exporter import OTLPSpanExporter
 from opentelemetry.instrumentation.flask import FlaskInstrumentor
 from opentelemetry.instrumentation.requests import RequestsInstrumentor
 from opentelemetry.sdk.trace import TracerProvider
@@ -41,11 +45,11 @@ from services.user_activities import *
 
 
 # HONEYCOMB INSTRUMENTATION
-provider = TracerProvider()
-processor = BatchSpanProcessor(OTLPSpanExporter())
-provider.add_span_processor(processor)
-trace.set_tracer_provider(provider)
-tracer = trace.get_tracer(__name__)
+# provider = TracerProvider()
+# processor = BatchSpanProcessor(OTLPSpanExporter())
+# provider.add_span_processor(processor)
+# trace.set_tracer_provider(provider)
+# tracer = trace.get_tracer(__name__)
 
 app = Flask(__name__)
 
@@ -53,8 +57,8 @@ app = Flask(__name__)
 # XRayMiddleware(app, xray_recorder)
 
 # HONEYCOMB INSTRUMENTATION
-FlaskInstrumentor().instrument_app(app)
-RequestsInstrumentor().instrument()
+# FlaskInstrumentor().instrument_app(app)
+# RequestsInstrumentor().instrument()
 
 frontend = os.getenv("FRONTEND_URL")
 backend = os.getenv("BACKEND_URL")
@@ -62,9 +66,16 @@ origins = [frontend, backend]
 cors = CORS(
     app,
     resources={r"/api/*": {"origins": origins}},
-    expose_headers="location,link",
-    allow_headers="content-type,if-modified-since",
+    headers=["Content-Type", "Authorization"],
+    expose_headers="Authorization",
     methods="OPTIONS,GET,HEAD,POST",
+)
+
+
+cognito_jwt_token = CognitoJwtToken(
+    user_pool_id=os.environ.get("AWS_COGNITO_USER_POOL_ID"),
+    user_pool_client_id=os.environ.get("AWS_COGNITO_USER_POOL_CLIENT_ID"),
+    region=os.getenv("AWS_DEFAULT_REGION"),
 )
 
 # CLOUDWATCH LOGS TEST
@@ -154,7 +165,19 @@ def data_create_message():
 
 @app.route("/api/activities/home", methods=["GET"])
 def data_home():
-    data = HomeActivities.run()
+    access_token = extract_access_token(request.headers)
+    try:
+        claims = cognito_jwt_token.verify(token=access_token)
+        # authenticated request
+        app.logger.debug("authenticated")
+        app.logger.debug(claims)
+        app.logger.debug(claims["username"])
+        data = HomeActivities.run(cognito_user_id=claims["username"])
+    except TokenVerifyError as e:
+        # unauthenticated request
+        app.logger.debug(e)
+        app.logger.debug("unauthenticated")
+        data = HomeActivities.run()
     return data, 200
 
 
